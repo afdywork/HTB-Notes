@@ -1,0 +1,1 @@
+ssh [user]@[IP] -p [port] — Connects to a remote terminal.
