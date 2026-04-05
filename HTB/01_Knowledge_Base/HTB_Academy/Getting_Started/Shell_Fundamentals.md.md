@@ -1,39 +1,68 @@
+**Category:** #Exploitation / #Access
+**HTB Module:** [[Getting Started]] / [[Shells & Payloads]]
+
+---
+
 ## 🔍 Overview
 
-When a system is compromised via Remote Code Execution (RCE), we need a persistent way to communicate with the OS (Bash/PowerShell). While SSH or WinRM are ideal, they require credentials we usually don't have yet. Thus, we use **Shells**.
+> **Logic:** Once Remote Code Execution (RCE) is achieved, we need a stable interface to the OS (Bash/PowerShell). Since we rarely have SSH/WinRM credentials initially, we use **Volatile Shells** to gain our foothold.
 
-## 🔄 1. Reverse Shell (Most Common)
+---
 
-- **Concept:** The **Target connects to us**.
-    
-- **Workflow:** 1. Start a `netcat` listener on your attack machine. 2. Execute a payload on the target that points back to your IP/Port.
-    
-- **Pros:** Usually bypasses egress (outbound) firewalls.
-    
-- **Cons:** "Fragile"—if the process stops or the connection blips, the shell dies.
-    
+## 🔄 1. Reverse Shell (The "Phone Home")
 
-## 🕸️ 2. Bind Shell
+**Concept:** The **Target** initiates the connection to **You**.
 
-- **Concept:** The **Target opens a port** and waits for us to connect.
+### 🛠️ Workflow
+
+1. **Attacker:** Set up a listener (e.g., `nc -lvnp 4444`).
     
-- **Workflow:**
-    
-    1. Execute a payload on the target that binds a shell to a local port.
-        
-    2. Connect to that target's IP/Port using `nc`.
-        
-- **Pros:** If you lose the connection, you can simply reconnect (as long as the process is still running).
-    
-- **Cons:** Inbound firewalls almost always block unknown ports.
+2. **Target:** Execute a payload pointing to the Attacker's IP/Port.
     
 
-## 🌐 3. Web Shell
+- **✅ Pros:** Usually bypasses **Egress** (outbound) firewalls—most servers are allowed to "talk" to the internet.
+    
+- **❌ Cons:** "Fragile." If the network blips or the process is killed, the shell is lost.
+    
 
-- **Concept:** A script (PHP, ASPX, JSP) uploaded to the webroot.
+---
+
+## 🕸️ 2. Bind Shell (The "Open Door")
+
+**Concept:** The **Target** opens a port and waits for **You** to connect.
+
+### 🛠️ Workflow
+
+1. **Target:** Execute a payload that binds a shell to a local port (e.g., 4444).
     
-- **Communication:** Conducted via HTTP parameters (e.g., `?cmd=id`).
+2. **Attacker:** Connect to the Target’s IP on that port (`nc [Target_IP] 4444`).
     
-- **Pros:** Bypasses firewalls (uses Port 80/443); survives reboots.
+
+- **✅ Pros:** Persistent as long as the process runs. You can disconnect and reconnect easily.
     
-- **Cons:** Non-interactive (you have to refresh/send new requests for every command).
+- **❌ Cons:** Almost always blocked by **Inbound** firewalls.
+    
+
+---
+
+## 🌐 3. Web Shell (The "Script Hook")
+
+**Concept:** A script file (PHP, ASPX, JSP) uploaded to the webroot.
+
+**Communication:** Commands are sent as HTTP parameters (e.g., `shell.php?cmd=id`).
+
+- **✅ Pros:** Stealthy. It uses standard web traffic (Port 80/443). Survives reboots.
+    
+- **❌ Cons:** **Non-interactive.** You cannot use commands like `su` or `sudo` easily because the session doesn't "stay open" between requests.
+    
+
+---
+
+## 📊 Tactical Comparison
+
+| **Feature**           | **Reverse Shell**      | **Bind Shell**        | **Web Shell**      |
+| --------------------- | ---------------------- | --------------------- | ------------------ |
+| **Traffic Direction** | Outbound (Target ➔ Us) | Inbound (Us ➔ Target) | HTTP Request       |
+| **Firewall Bypass**   | High (Egress)          | Low (Inbound blocked) | High (Web Traffic) |
+| **Interactivity**     | High                   | High                  | Low                |
+| **Persistence**       | Low (Process based)    | Medium                | High (File based)  |

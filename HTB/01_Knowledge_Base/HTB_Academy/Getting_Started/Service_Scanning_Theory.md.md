@@ -1,75 +1,77 @@
-# 🛰️ Service Scanning & Enumeration Theory
+**Category:** #Reconnaissance / #Enumeration
+**Phase:** Pre-Exploitation
 
-## 📂 Key Concepts
+---
 
-- **Service:** An application running on a server that performs functions for users (e.g., Web Server, File Share).
+## 📂 Fundamental Concepts
+
+> **Logic:** Every open port is a potential doorway. Enumeration is the process of peering through the keyhole to see what's inside before trying to kick the door down.
+
+### 🔢 Port Anatomy
+
+- **Well-known Ports (1-1,023):** Reserved for privileged services (HTTP, SSH, FTP). Requires root/admin to bind.
     
-- **Ports:** Ranges from 1 to 65,535.
+- **Registered Ports (1,024-49,151):** Used by specific applications (e.g., MySQL on 3306).
     
-- **Well-known Ports:** 1-1,023 (Reserved for privileged services like HTTP, SSH, FTP).
-    
-- **Port 0:** Reserved/Wildcard; services usually bind to the next available port above 1,024.
+- **Port 0:** Reserved/Wildcard. Services bind to the next available port > 1,024.
     
 
-## 📡 Scanning States
+### 📡 Scanning States (The "Nmap Verdict")
 
-- **Open:** The service is actively listening and accepting connections.
-    
-- **Filtered:** A firewall or network filter is blocking the probes; Nmap cannot tell if the port is open or closed.
-    
-- **Closed:** The port is reachable but no service is listening on it.
-    
+|**State**|**Meaning**|**Action**|
+|---|---|---|
+|**Open**|Service is actively listening.|**Enumerate Version!**|
+|**Filtered**|Firewall/IDS is dropping packets.|Try fragmentation or different source ports.|
+|**Closed**|Reachable, but no service is home.|Move to the next port.|
+
+---
 
 ## 🚩 Common Service Indicators
 
-|**Port**|**Common Service**|**Likely OS Target**|**Notes**|
+|**Port**|**Service**|**Target OS**|**Tactical Notes**|
 |---|---|---|---|
-|21|FTP|Any|Check for **Anonymous Login**.|
-|22|SSH|Linux / Unix|Check version for **User Enumeration** bugs.|
-|80 / 443|HTTP / HTTPS|Any|Check **Page Source (CTRL+U)** for plugins.|
-|139 / 445|SMB / Samba|Windows / Linux|Use `smbclient` to list shares.|
-|3389|RDP|Windows|Common target for **BlueKeep** or Brute Force.|
+|**21**|FTP|Any|Check for `Anonymous` login.|
+|**22**|SSH|Linux|Check version for User Enumeration bugs.|
+|**80/443**|HTTP(S)|Any|Check Page Source (`CTRL+U`) for plugins/versions.|
+|**139/445**|SMB|Win/Linux|Use `smbclient -L` to list shares.|
+|**3389**|RDP|Windows|Check for BlueKeep or Brute Force potential.|
 
 ---
 
-## 🕵️ Advanced Enumeration: The "Detective" Mindset
+## 🕵️ The "Detective" Mindset
 
-When automated scanners (Nmap/Gobuster) don't give you a direct exploit, you must pivot to manual inspection.
+> **Golden Rule:** "If the scanners aren't talking, start reading."
 
-## 💡 The Enumeration Golden Rule
+### 📝 Manual Web Checklist
 
-> **"If the scanners aren't talking, start reading."**
-
-**Manual Check-list for Web Applications:**
-
-1. **Page Source (CTRL+U):** Search for `plugins`, `themes`, or `version` strings.
+- [ ] **Page Source (`CTRL+U`):** Search for `v=`, `version`, or unique plugin names.
     
-2. **Sensitive Files:** Manually check for `/robots.txt`, `/sitemap.xml`, or `/.git/`.
+- [ ] **Hidden Files:** Check `/robots.txt`, `/sitemap.xml`, or `/.git/`.
     
-3. **Visual Clues:** Look at "Recent Posts," "Comments," or "Footer" text for software names and version numbers.
+- [ ] **Visual Clues:** Look at "Recent Posts" or "Footer" for CMS names (WordPress, Joomla).
     
-4. **Directory Structure:** Standard CMS paths (like `/wp-content/plugins/` for WordPress) often leak information even if directory listing is disabled.
+- [ ] **Directory Structure:** Fuzz for `/wp-content/`, `/admin/`, or `/config/`.
     
 
 ---
 
-## 🚀 Exploitation Logic: Bridging the Gap
+## 🚀 Exploitation Logic: The Targeted Strike
 
-The goal of enumeration is to find a **Product Name** and a **Version Number**. This allows you to perform a **Targeted Strike**.
+The goal of enumeration is to find a **Product Name** + **Version Number**.
 
-## The Workflow
+### 🔄 The Workflow
 
-1. **Identify:** Use Nmap to find the service and version (`-sV`).
+1. **Identify:** Use Nmap `-sV` to get the version string.
     
-2. **Research:** Use `searchsploit` or Google to find public exploits (CVEs).
+2. **Research:** Use `searchsploit` or Google the CVE.
     
-3. **Verify:** Check if the vulnerable component actually exists (e.g., use a browser to see if a plugin folder is reachable).
+3. **Verify:** Manually check if the vulnerable path/file exists.
     
-4. **Execute:** Use a tool like **Metasploit** to deliver the payload.
+4. **Execute:** Use Metasploit or a standalone PoC script.
     
 
-## Vulnerability Types encountered:
+### 💀 Common Vulnerability Types
 
-- **Remote File Read / Path Traversal:** Exploiting a bug to read files outside the web root (e.g., `/etc/passwd` or `/flag.txt`) using `../` sequences.
+- **LFI / Path Traversal:** Using `../` to read `/etc/passwd`.
     
-- **Remote Code Execution (RCE):** The ultimate goal; gaining a shell to run commands directly on the target system.
+- **RCE (Remote Code Execution):** The "Holy Grail." Gaining a shell to run commands directly.

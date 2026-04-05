@@ -1,70 +1,84 @@
-🏷️ Tags: #HTB #Enumeration #SMB #Nmap #Tomcat #Telnet
+**Date:** 2026-03-22
+**Category:** #Enumeration / #Nmap / #SMB
 **Target IP:** `10.129.24.28` 
-**Date:** 2026-03-22 
+**Status:** **Completed ✅**
 
-#### **Question 1**:
-Perform an Nmap scan of the target. What does Nmap display as the version of the service running on port 8080?
+---
 
-**Step 1: Run nmap with specific port and target IP Address**:
+## 🛰️ Phase 1: Service Identification (Port 8080)
+
+> **Objective:** Determine the version of the service running on a known high-number port.
+
+### 🛠️ Execution
+```
 nmap -sV -sC -p8080 10.129.24.28
+```
 
-**Result**:
-PORT     STATE SERVICE VERSION
-8080/tcp open  http    **Apache Tomcat**
+### 📡 Intelligence
 
-**Findings**:
-Port: 8080/TCP
-Service: http
-**Version: Apache Tomcat** (Answer)
+|**Port**|**State**|**Service**|**Version**|
+|---|---|---|---|
+|**8080/tcp**|Open|http|**Apache Tomcat**|
 
-#### **Question 2**:
-Perform an Nmap scan of the target and identify the non-default port that the telnet service is running on.
+---
 
-**Step 1: Run nmap command to check all ports**:
-nmap -sV -sC -p- 10.129.24.28 (took long time)
+## 🕵️ Phase 2: Finding the Hidden Telnet
 
-**Step 2: Run nmap command to check all ports using min rate **:
-nmap -p- --min-rate 5000 10.129.24.28 (got result)
+> **Objective:** Identify non-standard ports where common services might be hiding.
 
-**First Result**:
-**2323/tcp open  3d-nfsd (Suspicious port 2323 with service name 2d-nfsd)**
+### ⚡ Step 1: High-Speed Discovery
 
-**Step 3: Run nmap command to the suspicious port**
+Standard scans were too slow. Switched to high-rate "Sprayer" mode:
+```
+nmap -p- --min-rate 5000 10.129.24.28
+```
+
+- **Initial Finding:** `2323/tcp open 3d-nfsd` (Suspicious service name).
+    
+
+### 🔍 Step 2: The "Surgeon" Scan
+
+Verify the true nature of port **2323**:
+```
 nmap -sV -sC -p2323 10.129.24.28
+```
 
-**Final Result**:
-PORT     STATE SERVICE VERSION
-2323/tcp open  **telnet**  Linux telnetd
+- **True Service:** `telnet` (Linux telnetd).
+    
 
-**Findings**:
-Port: 2323/TCP
-**Service: telnet** (Answer)
+---
 
-#### **Question 3:
-List the SMB shares available on the target host. Connect to the available share as the bob user. Once connected, access the folder called 'flag' and submit the contents of the flag.txt file.
+## 📂 Phase 3: SMB Share Exploitation
 
-**Step 1: Connect to the 'users' share as Bob**
-smbclient -U bob \\\\10.129.24.28\\users
-Password used: Welcome1 (from previous notes)
+> **Objective:** Access restricted file shares using discovered credentials.
 
-**Step 2: Navigation & Download**
-smb: \> cd flag
-smb: \flag\> ls
+### 🛠️ Execution Flow
 
-**Found flag.txt**
-smb: \flag\> get flag.txt
-smb: \flag\> exit
+1. **Authentication:** Connected to the `users` share as user `bob`.
+    ```
+    smbclient -U bob //10.129.24.28/users
+    ```
+    
+2. **Navigation:** Navigated to the `flag` directory and listed contents.
+    
+3. **Extraction:** Downloaded `flag.txt` to the local attack machine.
+    ```
+    smb: \flag> get flag.txt
+    ```
+    
 
-**Step 3: Reading the Loot**
+### 🚩 Flag Recovery
+```
 cat flag.txt
+# Result: dceece590f3284c3866305eb2473d099
+```
 
-**Flag Result**: `dceece590f3284c3866305eb2473d099` (Answer)
+---
 
-===========================================
-## Lessons Learned
+## 🧠 Lessons Learned
 
-1. **Service Misdirection:** Port `2323` was a decoy. Version scanning (`-sV`) is non-negotiable for finding the truth.
+- **Service Misdirection:** Port 2323 was a decoy (labeled `3d-nfsd`). **Version scanning (`-sV`) is non-negotiable** for uncovering the truth behind a port.
     
-2. **Speed vs. Accuracy:** Used `--min-rate 5000` to find ports in seconds instead of minutes.
+- **Speed vs. Accuracy:** Using `--min-rate 5000` allowed for a full port discovery in seconds, preventing time-waste on firewalled ports.
     
-3. **SMB Workflow:** `smbclient` is essential for checking network shares. Remember: `get` downloads the file to your local machine; you cannot `cat` it inside the SMB prompt.
+- **SMB Workflow:** `smbclient` is the standard tool for share interaction. **Remember:** You must `get` the file to your local machine before you can read it with `cat`.

