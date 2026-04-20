@@ -62,4 +62,4 @@ The service is passive and will not send the flag until it receives data.
 
 ✅ **Flag Found**
 
-`HTB{kjnsdf2n982n1827eh76238s98di1w6}`
+`HTB{....}`
